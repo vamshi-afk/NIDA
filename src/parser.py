@@ -1,45 +1,51 @@
 import re
 from datetime import datetime
 
-# Regex pattern to extract key fields from auth log lines
 LOG_PATTERN = re.compile(
-    r"(?P<month>\w+)\s+"
-    r"(?P<day>\d+)\s+"
-    r"(?P<time>\d+:\d+:\d+).*"
-    r"(?P<status>Failed|Accepted) password for "
-    r"(?P<user>\w+) from "
-    r"(?P<ip>[\d\.]+)"
+    r"(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s+"
+    r"(?P<src_ip>\d{1,3}(?:\.\d{1,3}){3})\s+"
+    r"(?P<dst_ip>\d{1,3}(?:\.\d{1,3}){3})\s+"
+    r"(?P<dst_port>\d+)\s+"
+    r"(?P<protocol>\w+)\s+"
+    r"(?P<status>ACCEPTED|REJECTED)\s+"
+    r"(?P<bytes_sent>\d+)"
 )
 
 
 def parse_line(line):
-
     match = LOG_PATTERN.search(line)
     if not match:
         return None
 
     data = match.groupdict()
 
-    # Construct datetime object (year defaults to 1900)
-    timestamp_str = f"{data['month']} {data['day']} {data['time']}"
-    timestamp = datetime.strptime(timestamp_str, "%b %d %H:%M:%S")
+    try:
+        timestamp = datetime.strptime(data["timestamp"], "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return None
 
     return {
         "timestamp": timestamp,
-        "user": data["user"],
-        "ip": data["ip"],
-        "status": "FAIL" if data["status"] == "Failed" else "SUCCESS",
+        "src_ip": data["src_ip"],
+        "dst_ip": data["dst_ip"],
+        "dst_port": int(data["dst_port"]),
+        "protocol": data["protocol"].upper(),
+        "status": data["status"].upper(),  # ACCEPTED or REJECTED
+        "bytes_sent": int(data["bytes_sent"]),
     }
 
 
 def parse_file(filepath):
-
     events = []
-
-    with open(filepath, "r") as f:
-        for line in f:
-            parsed = parse_line(line)
-            if parsed:
-                events.append(parsed)
-
+    try:
+        with open(filepath, "r") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parsed = parse_line(line)
+                if parsed:
+                    events.append(parsed)
+    except FileNotFoundError:
+        print(f"[!] Log file not found: {filepath}")
     return events
