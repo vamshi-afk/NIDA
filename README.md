@@ -17,7 +17,7 @@ Built and validated against a live KVM lab environment: real nmap port scans and
 ```
 NIDA/
 │
-├── logs/
+├── logs/                ← place your log files here (not tracked in repo)
 │   ├── ufw.log          ← raw UFW capture from victim VM
 │   └── network.log      ← NIDA format (output of converter.py)
 ├── output/              ← generated on first run
@@ -37,25 +37,20 @@ NIDA/
 
 ## Lab Setup
 
-NIDA was validated against real attack traffic in a KVM/virt-manager lab:
-
-| Role    | OS              | IP               |
-|---------|-----------------|------------------|
-| Attacker | Kali Linux     | 192.168.100.36   |
-| Victim   | Ubuntu Server 24.04 | 192.168.100.19 |
+NIDA was validated against real attack traffic using a KVM/virt-manager isolated lab with two VMs on a private network — one acting as the attacker (Kali Linux) and one as the victim (Ubuntu Server 24.04).
 
 **Attacks performed:**
 - `nmap -sS` SYN port scan across 1000 ports
 - `hydra` SSH brute force against port 22
 
-UFW logging was set to `medium` on the victim. Captured logs were transferred to the host and processed through NIDA's pipeline.
+UFW logging was set to `medium` on the victim. Captured logs were transferred to the host and processed through NIDA's full pipeline.
 
 ---
 
 ## Pipeline
 
 ```
-ufw.log (raw firewall log)
+ufw.log  (raw firewall log from victim)
         ↓
   converter.py  — parses UFW format, filters noise, maps to NIDA fields
         ↓
@@ -74,13 +69,13 @@ ufw.log (raw firewall log)
 
 ### UFW Input (`ufw.log`)
 ```
-2026-04-06T15:48:40.263451+00:00 victim kernel: [UFW BLOCK] IN=enp1s0 OUT= MAC=... SRC=192.168.100.36 DST=192.168.100.19 LEN=44 ... PROTO=TCP SPT=35264 DPT=110 ...
+2026-04-06T15:48:40.263451+00:00 hostname kernel: [UFW BLOCK] IN=eth0 OUT= MAC=... SRC=<attacker-ip> DST=<victim-ip> LEN=44 ... PROTO=TCP SPT=35264 DPT=110 ...
 ```
 
 ### NIDA Format (`network.log`)
 ```
 TIMESTAMP SRC_IP DST_IP DST_PORT PROTOCOL STATUS BYTES_SENT
-2026-04-06 15:48:40 192.168.100.36 192.168.100.19 110 TCP REJECTED 44
+2026-04-06 15:48:40 <attacker-ip> <victim-ip> 110 TCP REJECTED 44
 ```
 
 Blank lines and lines starting with `#` are ignored by the parser.
@@ -164,7 +159,7 @@ docker run nida
 NIDA — NETWORK INTRUSION DETECTION REPORT
 ============================================================
 
-Source IP    : 192.168.100.36
+Source IP    : 10.0.0.1
 Risk Score   : 16
 Priority     : CRITICAL
 Connections  : 1994 rejected | Accepted: YES
@@ -215,7 +210,7 @@ End of Report
 
 ## Future Scope
 
-- Real-time ingestion via `tail -f` or syslog forwarding
+- Real-time log ingestion via `tail -f` or syslog forwarding
 - Time-window correlation across multiple destination IPs
 - Statistical baseline modeling to flag deviations from normal behavior
 - GeoIP lookup for external source IP enrichment
