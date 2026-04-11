@@ -16,7 +16,6 @@ output/
 .DS_Store
 Thumbs.db
 
-# Logs (optional)
-# Uncomment if you don’t want to track sample logs
-# logs/
+# Logs 
+logs/
 

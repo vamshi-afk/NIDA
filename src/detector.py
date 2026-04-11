@@ -6,6 +6,43 @@ SENSITIVE_PORTS = {22, 23, 3389, 445, 3306, 5432, 6379, 27017, 8080, 8443}
 # Bytes threshold to flag possible data exfiltration
 EXFIL_THRESHOLD = 500_000  # 500 KB
 
+RULE_SUGGESTIONS = {
+    "Port scan": [
+        "Block all non-essential inbound ports (ufw default deny incoming)",
+        "Enable port-knocking for SSH access",
+        "Deploy a honeypot on commonly scanned ports",
+    ],
+    "Brute force": [
+        "Install fail2ban to auto-ban IPs after repeated failures",
+        "Disable password auth — use SSH key-only authentication",
+        "Move SSH to a non-standard port to reduce automated attacks",
+    ],
+    "Possible breach": [
+        "IMMEDIATE: Isolate this machine from the network",
+        "Rotate all credentials — assume keys/passwords are compromised",
+        "Audit /var/log/auth.log for commands run post-compromise",
+        "Check for new user accounts, cron jobs, and SUID binaries",
+        "Consider reimaging from clean snapshot",
+    ],
+    "Sensitive port": [
+        "Audit which services are actually needed — disable unused ones",
+        "Restrict database ports (3306, 5432) to localhost only",
+        "Replace Telnet (23) with SSH equivalents",
+    ],
+    "Off-hours": [
+        "Set up alerting for off-hours logins via webhook",
+        "Consider IP allowlisting for admin access outside business hours",
+    ],
+    "High data transfer": [
+        "Apply egress filtering — restrict outbound traffic rules",
+        "Check what data is accessible from the compromised account",
+        "Review recent file access: ausearch -f /sensitive/path",
+    ],
+    "Burst detected": [
+        "Apply rate-limiting now: ufw limit 22/tcp",
+        "Install fail2ban with a low threshold (3-5 attempts)",
+    ],
+}
 
 def _has_velocity_burst(fail_timestamps, window_seconds=60, threshold=5):
     # Returns True if >= threshold REJECTEDs happened within any window_seconds window
@@ -136,6 +173,13 @@ def analyze_events(events):
         else:
             priority = "LOW"
 
+        suggestions = []
+        for reason in reasons:
+            for key, suggs in RULE_SUGGESTIONS.items():
+                if key in reason:
+                    suggestions.extend(suggs)
+                    break
+
         results.append(
             {
                 "ip": ip,
@@ -146,6 +190,7 @@ def analyze_events(events):
                 "accepted": data["accepted"],
                 "ports_probed": len(data["dst_ports"]),
                 "bytes_sent": data["bytes_sent"],
+                "suggestions": suggestions
             }
         )
 

@@ -44,6 +44,10 @@ def main():
         print("Triggered Rules:")
         for r in item["reasons"]:
             print(f"  - {r}")
+        if item.get("suggestions"):
+            print("Recommended Actions:")
+            for s in item["suggestions"]:
+                print(f"  -> {s}")
 
     print("\n" + "=" * 60)
     print("End of Report")
