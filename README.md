@@ -143,13 +143,6 @@ python src/main.py
 - CLI triage report with scores, triggered rules, and remediation suggestions
 - Risk score bar chart saved to `output/risk_scores.png`
 
-### 4. Docker (optional)
-
-```bash
-docker build -t nida .
-docker run nida
-```
-
 ---
 
 ## Sample Output
